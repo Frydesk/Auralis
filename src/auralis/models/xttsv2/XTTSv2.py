@@ -219,7 +219,7 @@ class XTTSv2Engine(BaseAsyncTTSEngine):
                           32 + 5 + 3, # this is from the xttsv2 code, 32 is the conditioning sql
             gpu_memory_utilization=mem_utils,
             trust_remote_code=True,
-            enforce_eager=True,
+            enforce_eager=getattr(self, 'enforce_eager', False),  # Use stored setting or default to False
             limit_mm_per_prompt={"audio": 1}, # even if more audio are present, they'll be condendesed into one
             max_num_seqs=max_seq_num,
             disable_log_stats=True, # temporary fix for the log stats, there is a known bug in vllm that will be fixed in the next relaese
@@ -276,14 +276,17 @@ class XTTSv2Engine(BaseAsyncTTSEngine):
         gpt_config = XTTSGPTConfig(**config['gpt_config'])
         hifi_config = XTTSConfig(**config)
 
-        # Initialize model
+        # Create model instance
         model = cls(
             hifi_config=hifi_config,
             gpt_config=gpt_config,
-            tensor_parallel_size=tensor_parallel_size,
             pipeline_parallel_size=pipeline_parallel_size,
+            tensor_parallel_size=tensor_parallel_size,
             **kwargs
         )
+
+        # Store enforce_eager setting
+        model.enforce_eager = kwargs.get('enforce_eager', False)
 
         # Load model weights
         if not os.path.exists(pretrained_model_name_or_path):
@@ -306,7 +309,7 @@ class XTTSv2Engine(BaseAsyncTTSEngine):
         # Cast model to specified dtype
         model = model.to(torch_dtype)
         model = model.to('cuda')
-
+        
         return model
 
     async def _get_speaker_embedding(self, audio, sr):

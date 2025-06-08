@@ -27,7 +27,6 @@ setup(
     packages=find_packages(where='src'),
     entry_points={
             'console_scripts': [
-                'auralis.openai=auralis.entrypoints.oai_server:main',
             ],
         },
     install_requires=[
